@@ -102,7 +102,7 @@ install_bb_worker()
 config_bb_worker()
 {
     echo "Setting up bb_worker"
-    buildbot-worker create-worker worker localhost worker1 ${PASS:-pass123} >> ${TDIR}/bb_install.log 2>&1
+    buildbot-worker create-worker worker localhost worker1 ${PASS:-pass} >> ${TDIR}/bb_install.log 2>&1
 }
 
 # MAIN -------------------------------
