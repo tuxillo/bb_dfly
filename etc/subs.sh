@@ -25,7 +25,7 @@ err()
     exit $exitval
 }
 
-#
+# BUGGY, needs fix. It can run quoted commands 
 # runcmd cmd
 # Execute a command
 runcmd()
@@ -38,7 +38,7 @@ runcmd()
     [ -z "${logfile}" ] && logf="/dev/null"
 
     [ ${verbose} -gt 0 ] && echo "RUN: " ${cmd} >> ${logf}
-    ${cmd}
+    ${cmd} >> ${logf} 2>&1
 
     rc=$?
 
