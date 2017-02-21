@@ -62,7 +62,7 @@ bootstrap_vkernel()
     esac
 
     # Remove previous host key from known_hosts
-    ssh-keygen -R ${ip}
+    runcmd ssh-keygen -qR ${ip}
 
     # shutdown vkernel if it's up
     ssh ${sshopts} -i ${key} root@${ip} uptime >> ${logfile} 2>&1
