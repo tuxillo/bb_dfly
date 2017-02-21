@@ -4,6 +4,7 @@
 
 verbose=1
 logfile=$(mktemp)
+sshopts="-o StrictHostKeyChecking=false -o ConnectTimeout=5"
 
 # Read configuration file
 . etc/bb_dfly.conf
@@ -60,8 +61,11 @@ bootstrap_vkernel()
 	*) err 1 "Wrong URL format" ;;
     esac
 
+    # Remove previous host key from known_hosts
+    ssh-keygen -R ${ip}
+
     # shutdown vkernel if it's up
-    ssh -o StrictHostKeyChecking=false -i ${key} root@${ip} uptime >> ${logfile} 2>&1
+    ssh ${sshopts} -i ${key} root@${ip} uptime >> ${logfile} 2>&1
     if [ $? -eq 0 ]; then
 	info "Stopping ${imgdir} vkernel for configuration"
 	runcmd /etc/rc.d/vkernel onestop
@@ -125,9 +129,9 @@ EOF
     info "Starting ${imgdir} vkernel (60 sec timeout)"
 
     if ! grep -q vkernel_${imgdir} /etc/rc.conf; then
-	list=$(grep vkernel_list /etc/rc.conf | tr -d \" | cut -d= -f2)
+	list=$(grep vkernel_list /etc/rc.conf | tr -d \" | cut -d= -f2 | sed -e "s/${imgdir}//")
 
-	# Remove any vkernel named as us
+	# Remove previous list from file
 	sed -I .bak "/vkernel_list/d" /etc/rc.conf
 
 	# Remove any previous vkernel configuration
@@ -145,34 +149,58 @@ vkernel_${imgdir}_kill_timeout="45"
 EOF
     fi
 
-    runcmd rcone vkernel
+    runcmd /etc/rc.d/vkernel onestart
     for n in $(seq 1 10)
     do
-	ssh -o StrictHostKeyChecking=false -i ${key} root@${ip} uptime >> ${logfile} 2>&1
+	ssh ${sshopts} -i ${key} root@${ip} uptime >> ${logfile} 2>&1
 	if [ $? -eq 0 ]; then
   	    break
 	fi
 	sleep 5
     done
 
-    ssh -o StrictHostKeyChecking=false -i ${key} root@${ip} uptime >> ${logfile} 2>&1
+    ssh ${sshopts} -i ${key} root@${ip} uptime >> ${logfile} 2>&1
     [ $? -ne 0 ] && err 1 "${imgdir} vkernel not accesible, aborting"
 
     info "Customizing vkernel (pkg/buildbot)"
 
-    ssh -o StrictHostKeyChecking=false -i ${key} root@${ip} \
-	"test -x /usr/local/sbin/pkg || (cd /usr && make pkg-bootstrap)" >> ${logfile} 2>&1
-    [ $? -ne 0 ] && err 1 "Could not install pkg bootstrap in vkernel"
+    # take care of pkg bootstrap
+    ssh ${sshopts} -i ${key} root@${ip} -- \
+	"[ -x /usr/local/sbin/pkg ]"
 
-    ssh -o StrictHostKeyChecking=false -i ${key} root@${ip} \
+    if [ $? -ne 0 ]; then
+	ssh ${sshopts} -i ${key} root@${ip} -- \
+	    "cd /usr && make pkg-bootstrap" >> ${logfile} 2>&1
+	[ $? -ne 0 ] && err 1 "Could not install pkg bootstrap in vkernel"
+    fi
+
+    # install required packages if needed
+    ssh ${sshopts} -i ${key} root@${ip} -- \
 	"pkg install -y python27 py27-virtualenv py27-sqlite3 git-lite" >> ${logfile} 2>&1
-    [ $? -ne 0 ] && err 1 "Could not install pkg bootstrap in vkernel"
+    [ $? -ne 0 ] && err 1 "Could not install software in vkernel"
 
-    ssh -o StrictHostKeyChecking=false -i ${key} root@${ip} \
-	"test -d /root/bb_dfly || git clone https://github.com/tuxillo/bb_dfly.git /root/bbdfly" >> ${logfile}
+    # clone or pull repo
+    ssh ${sshopts} -i ${key} root@${ip} -- \
+	"[ -d /root/bbdfly ]"
+    if [ $? -eq 0 ]; then
+	ssh ${sshopts} -i ${key} root@${ip} -- \
+	    "cd /root/bbdfly && git pull" >> ${logfile} 2>&1
+	[ $? -ne 0 ] && err 1 "Could not pull repo"
+    else
+	ssh ${sshopts} -i ${key} root@${ip} -- \
+	    "git clone https://github.com/tuxillo/bb_dfly.git /root/bbdfly" >> ${logfile} 2>&1
+	[ $? -ne 0 ] && err 1 "Could not clone repo"
+    fi
 
-    ssh -o StrictHostKeyChecking=false -i ${key} root@${ip} \
-	"cd /root/bbdfly && mkdir -p ${prefix} && ./bin/bb_install.sh worker"
+    # Install bb_worker
+    ssh ${sshopts} -i ${key} root@${ip} -- \
+	"[ -d /build/buildbot/bb_worker ]"
+
+    if [ $? -ne 0 ]; then
+	ssh -o StrictHostKeyChecking=false -i ${key} root@${ip} -- \
+	    "mkdir -p ${prefix} && cd /root/bbdfly && ./bin/bb_install.sh worker" >> ${logfile} 2>&1
+	[ $? -ne 0 ] && err 1 "Could not install buildbot worker"
+    fi
 }
 
 bootstrap()

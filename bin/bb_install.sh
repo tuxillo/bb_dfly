@@ -1,5 +1,6 @@
 #! /bin/sh
 
+. etc/subs.sh
 . etc/bb_dfly.conf
 
 check_prereq()
