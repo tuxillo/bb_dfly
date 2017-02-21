@@ -175,7 +175,7 @@ EOF
 
     # install required packages if needed
     ssh ${sshopts} -i ${key} root@${ip} -- \
-	"pkg install -y python27 py27-virtualenv py27-sqlite3 git-lite" >> ${logfile} 2>&1
+	"pkg install -y python py27-virtualenv py27-sqlite3 git-lite" >> ${logfile} 2>&1
     [ $? -ne 0 ] && err 1 "Could not install software in vkernel"
 
     # clone or pull repo
