@@ -35,7 +35,6 @@ prepare()
 	su - ${bbuser} -c \
 	   "ssh-keygen -q -t rsa -f ${vkernel_release_rsa_key} -N ''"
     fi
-
 }
 
 
@@ -209,17 +208,28 @@ bootstrap()
     # Prepare vkernel boostrap images
     bootstrap_vkernel ${vkernel_master_url} ${vkernel_master_ip} \
 		     ${vkernel_master_rsa_key}
-#    bootstrap_vkernel ${vkernel_release_url} ${vkernel_release_ip} \
-#		     ${vkernel_release_rsa_key}
+    bootstrap_vkernel ${vkernel_release_url} ${vkernel_release_ip} \
+		     ${vkernel_release_rsa_key}
+
+    # Install bb_master
+    bin/bb_install.sh master
 }
 
+post_install()
+{
+    chown -R ${bbuser} ${prefix}
+    chown ${bbuser} ${prefix}
+}
 
-# Install bbm and bbw
-#./bin/bb_install.sh
+cleanup()
+{
+    info "Cleaning up"
+}
 
 # Install doas.conf
 #cat etc/doas.conf.template >> 
 
 prepare
 bootstrap
-
+post_install
+cleanup

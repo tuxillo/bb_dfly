@@ -1,5 +1,6 @@
 #! /bin/sh
 
+verbose=1
 . etc/subs.sh
 . etc/bb_dfly.conf
 
@@ -30,16 +31,18 @@ install_bb_master()
 
     [ -d ${prefix}/bb_master ] && (info "bb_master is already installed"; exit 0)
 
-    mkdir -p ${prefix}/bb_master || (echo "Failed to create dir" && exit 1)
+    su - ${bbuser} -c "mkdir -p ${prefix}/bb_master || (echo Failed to create dir && exit 1)"
 
     info "Installing bb_master"
 
-    cd ${prefix}/bb_master
-    virtualenv --no-site-packages sandbox >> ${prefix}/bb_install.log 2>&1
-    . sandbox/bin/activate >> ${prefix}/bb_install.log 2>&1
+    su - ${bbuser} -c "cd ${prefix}/bb_master && virtualenv --no-site-packages sandbox" >> \
+       ${prefix}/bb_install.log 2>&1
 
-    pip install --upgrade pip >> ${prefix}/bb_install.log 2>&1
-    pip install 'buildbot[bundle]' >> ${prefix}/bb_install.log 2>&1
+    su - ${bbuser} -c "cd ${prefix}/bb_master && . sandbox/bin/activate && pip install --upgrade pip" >> \
+       ${prefix}/bb_install.log 2>&1
+
+    su - ${bbuser} -c "cd ${prefix}/bb_master && . sandbox/bin/activate && pip install 'buildbot[bundle]'" >> \
+       ${prefix}/bb_install.log 2>&1
 
     if [ $? -ne 0 ]; then
 	echo "Installation failed, cleaning up"
@@ -52,9 +55,14 @@ config_bb_master()
 {
     echo "Setting up bb_master"
 
-    buildbot create-master master >> ${prefix}/bb_install.log 2>&1
-    fetch -q https://github.com/tuxillo/bb_dfly/blob/master/etc/master.cfg \
-	  -o ${prefix}/bb_master/master/master.cfg
+    su - ${bbuser} -c "cd ${prefix}/bb_master && . sandbox/bin/activate && buildbot create-master master" >> \
+       ${prefix}/bb_install.log 2>&1
+
+
+    su - ${bbuser} -c "cd ${prefix}/bb_master && . sandbox/bin/activate && " >> \
+       ${prefix}/bb_install.log 2>&1
+
+    su - ${bbuser} -c "fetch -q https://raw.githubusercontent.com/tuxillo/bb_dfly/master/etc/master.cfg -o ${prefix}/bb_master/master/master.cfg"
 
 }
 
@@ -94,11 +102,13 @@ config_bb_worker()
 
 case "$1" in
     master|MASTER)
+	# Master runs with ${bbuser}
 	check_prereq
 	install_bb_master
 	config_bb_master
 	;;
     worker|WORKER)
+	# Workers run with root inside the vkernels
 	check_prereq
 	install_bb_worker
 	config_bb_worker
