@@ -28,7 +28,7 @@ check_prereq()
 install_bb_master()
 {
 
-    [ -d ${prefix}/bb_master ] && err 1 "bb_master is already installed"
+    [ -d ${prefix}/bb_master ] && (info "bb_master is already installed"; exit 0)
 
     mkdir -p ${prefix}/bb_master || (echo "Failed to create dir" && exit 1)
 
