@@ -127,16 +127,15 @@ EOF
 
     info "Starting ${imgdir} vkernel (60 sec timeout)"
 
-    if ! grep -q vkernel_${imgdir} /etc/rc.conf; then
-	list=$(grep vkernel_list /etc/rc.conf | tr -d \" | cut -d= -f2 | sed -e "s/${imgdir}//")
+    list=$(grep vkernel_list /etc/rc.conf | tr -d \" | cut -d= -f2 | sed -e "s/${imgdir}//")
 
-	# Remove previous list from file
-	sed -I .bak "/vkernel_list/d" /etc/rc.conf
+    # Remove previous list from file
+    sed -I .bak "/vkernel_list/d" /etc/rc.conf
 
-	# Remove any previous vkernel configuration
-	sed -I .bak2 "/vkernel_${imgdir}/d" /etc/rc.conf
+    # Remove any previous vkernel configuration
+    sed -I .bak2 "/vkernel_${imgdir}/d" /etc/rc.conf
 
-	cat<<EOF>>/etc/rc.conf
+    cat<<EOF>>/etc/rc.conf
 vkernel_list="${list} ${imgdir}"
 vkernel_${imgdir}_bin="${prefix}/${imgdir}/vkernel"
 vkernel_${imgdir}_memsize="${vkernel_memsize}"
@@ -146,7 +145,6 @@ vkernel_${imgdir}_logfile="/dev/null"
 vkernel_${imgdir}_flags="-U"
 vkernel_${imgdir}_kill_timeout="45"
 EOF
-    fi
 
     runcmd /etc/rc.d/vkernel onestart
     for n in $(seq 1 10)
