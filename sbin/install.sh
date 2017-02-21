@@ -11,9 +11,6 @@ sshopts="-o StrictHostKeyChecking=false -o ConnectTimeout=5"
 
 prepare()
 {
-    runcmd mkdir -p ${prefix}/master
-    runcmd mkdir -p ${prefix}/release
-
     # Create 'bbdfly' user if it doesnt exist
     if ! pw user show bbdfly -q >/dev/null; then
 	info "Creating user ${bbuser}"
@@ -60,6 +57,8 @@ bootstrap_vkernel()
 	*release*) imgdir="release" ;;
 	*) err 1 "Wrong URL format" ;;
     esac
+
+    runcmd mkdir -p ${prefix}/${imgdir}
 
     # Remove previous host key from known_hosts
     runcmd ssh-keygen -qR ${ip}
@@ -181,16 +180,20 @@ EOF
 
     # clone or pull repo
     ssh ${sshopts} -i ${key} root@${ip} -- \
-	"[ -d /root/bbdfly ]"
+	"[ -d /root/bb_dfly ]"
     if [ $? -eq 0 ]; then
 	ssh ${sshopts} -i ${key} root@${ip} -- \
-	    "cd /root/bbdfly && git pull" >> ${logfile} 2>&1
+	    "cd /root/bb_dfly && git reset --hard HEAD^ && git pull" >> ${logfile} 2>&1
 	[ $? -ne 0 ] && err 1 "Could not pull repo"
     else
 	ssh ${sshopts} -i ${key} root@${ip} -- \
-	    "git clone https://github.com/tuxillo/bb_dfly.git /root/bbdfly" >> ${logfile} 2>&1
+	    "git clone https://github.com/tuxillo/bb_dfly.git /root/bb_dfly" >> ${logfile} 2>&1
 	[ $? -ne 0 ] && err 1 "Could not clone repo"
     fi
+
+    # copy local configuration
+    scp ${sshopts} -i ${key} etc/bb_dfly.conf root@${ip}:/root/bb_dfly/etc
+    [ $? -ne 0 ] && err 1 "Could not copy local configuration."
 
     # Install bb_worker
     ssh ${sshopts} -i ${key} root@${ip} -- \
@@ -198,7 +201,7 @@ EOF
 
     if [ $? -ne 0 ]; then
 	ssh -o StrictHostKeyChecking=false -i ${key} root@${ip} -- \
-	    "mkdir -p ${prefix} && cd /root/bbdfly && ./bin/bb_install.sh worker" >> ${logfile} 2>&1
+	    "mkdir -p ${prefix} && cd /root/bb_dfly && ./bin/bb_install.sh worker" >> ${logfile} 2>&1
 	[ $? -ne 0 ] && err 1 "Could not install buildbot worker"
     fi
 }
