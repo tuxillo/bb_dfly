@@ -61,7 +61,7 @@ config_bb_master()
 install_bb_worker()
 {
 
-    [ -d ${prefix}/bb_worker ] && err 1 "bb_worker is already installed"
+    [ -d ${prefix}/bb_worker ] && (info "bb_worker is already installed"; exit 0)
 
     mkdir -p ${prefix}/bb_worker || (echo "Failed to create dir" && exit 1)
 
