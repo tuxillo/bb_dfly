@@ -1,11 +1,18 @@
 #! /bin/sh
 
-verbose=1
 . etc/subs.sh
 . etc/bb_dfly.conf
 
+verbose=1
+logfile=${prefix}/bb_install.log
+
 check_prereq()
 {
+
+    # Force builbot user for the installation
+    if [ "$(id -nu)" != "${bbuser}" ]; then
+	err 1 "This program must be run by ${bbuser}"
+    fi
 
     # Make sure prefix is a directory and that it
     # does not contain other buildbot instances.
@@ -28,21 +35,16 @@ check_prereq()
 
 install_bb_master()
 {
-
-    [ -d ${prefix}/bb_master ] && (info "bb_master is already installed"; exit 0)
-
-    su - ${bbuser} -c "mkdir -p ${prefix}/bb_master || (echo Failed to create dir && exit 1)"
+    runcmd mkdir -p ${prefix}/bb_master
 
     info "Installing bb_master"
 
-    su - ${bbuser} -c "cd ${prefix}/bb_master && virtualenv --no-site-packages sandbox" >> \
-       ${prefix}/bb_install.log 2>&1
+    runcmd cd ${prefix}/bb_master
+    runcmd virtualenv --no-site-packages sandbox
+    . sandbox/bin/activate
 
-    su - ${bbuser} -c "cd ${prefix}/bb_master && . sandbox/bin/activate && pip install --upgrade pip" >> \
-       ${prefix}/bb_install.log 2>&1
-
-    su - ${bbuser} -c "cd ${prefix}/bb_master && . sandbox/bin/activate && pip install 'buildbot[bundle]'" >> \
-       ${prefix}/bb_install.log 2>&1
+    runcmd pip install --upgrade pip
+    runcmd pip install 'buildbot[bundle]'
 
     if [ $? -ne 0 ]; then
 	echo "Installation failed, cleaning up"
@@ -55,32 +57,28 @@ config_bb_master()
 {
     echo "Setting up bb_master"
 
-    su - ${bbuser} -c "cd ${prefix}/bb_master && . sandbox/bin/activate && buildbot create-master master" >> \
-       ${prefix}/bb_install.log 2>&1
+    runcmd cd ${prefix}/bb_master
+    . sandbox/bin/activate
 
-
-    su - ${bbuser} -c "cd ${prefix}/bb_master && . sandbox/bin/activate && " >> \
-       ${prefix}/bb_install.log 2>&1
-
-    su - ${bbuser} -c "fetch -q https://raw.githubusercontent.com/tuxillo/bb_dfly/master/etc/master.cfg -o ${prefix}/bb_master/master/master.cfg"
-
+    runcmd buildbot create-master master
+    runcmd fetch -q \
+	   https://raw.githubusercontent.com/tuxillo/bb_dfly/master/etc/master.cfg \
+	   -o ${prefix}/bb_master/master/master.cfg
 }
 
 install_bb_worker()
 {
 
-    [ -d ${prefix}/bb_worker ] && (info "bb_worker is already installed"; exit 0)
-
-    mkdir -p ${prefix}/bb_worker || (echo "Failed to create dir" && exit 1)
+    runcmd mkdir -p ${prefix}/bb_worker
 
     echo "Installing bb_worker"
 
-    cd ${prefix}/bb_worker
-    virtualenv --no-site-packages sandbox >> ${prefix}/bb_install.log 2>&1
-    . sandbox/bin/activate >> ${prefix}/bb_install.log 2>&1
+    runcmd cd ${prefix}/bb_worker
+    runcmd virtualenv --no-site-packages sandbox
+    . sandbox/bin/activate
 
-    pip install --upgrade pip >> ${prefix}/bb_install.log 2>&1
-    pip install buildbot-worker >> ${prefix}/bb_install.log 2>&1
+    runcmd pip install --upgrade pip
+    runcmd pip install buildbot-worker
 
     if [ $? -ne 0 ]; then
 	echo "Installation failed, cleaning up"
@@ -93,21 +91,24 @@ config_bb_worker()
 {
     # worker name relies on the hostname, which should be either release or master
     # depending on what the vkernel dragonfly version is
+    runcmd cd ${prefix}/bb_worker
+    . sandbox/bin/activate
+
     echo "Setting up bb_worker"
-    buildbot-worker create-worker worker localhost \
-		    "$(hostname)" ${worker_pass} >> ${prefix}/bb_install.log 2>&1
+    runcmd buildbot-worker create-worker worker ${bb_master_ip} \
+		    "$(hostname)" ${worker_pass}
 }
 
 # MAIN -------------------------------
 
 case "$1" in
-    master|MASTER)
+    master)
 	# Master runs with ${bbuser}
 	check_prereq
 	install_bb_master
 	config_bb_master
 	;;
-    worker|WORKER)
+    worker)
 	# Workers run with root inside the vkernels
 	check_prereq
 	install_bb_worker
