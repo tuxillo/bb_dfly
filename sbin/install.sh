@@ -126,7 +126,8 @@ EOF
 
     info "Starting ${imgdir} vkernel (60 sec timeout)"
 
-    list=$(grep vkernel_list /etc/rc.conf | tr -d \" | cut -d= -f2 | sed -e "s/${imgdir}//")
+    list=$(grep vkernel_list /etc/rc.conf | tr -d \" |  cut -d= -f2 | sed -e "s/${imgdir}//")
+    list=$(echo $list |  sed -e "s/^ //")
 
     # Remove previous list from file
     sed -I .bak "/vkernel_list/d" /etc/rc.conf

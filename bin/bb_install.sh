@@ -9,11 +9,6 @@ logfile=${prefix}/bb_install.log
 check_prereq()
 {
 
-    # Force builbot user for the installation
-    if [ "$(id -nu)" != "${bbuser}" ]; then
-	err 1 "This program must be run by ${bbuser}"
-    fi
-
     # Make sure prefix is a directory and that it
     # does not contain other buildbot instances.
     if [ -z "${prefix}" ]; then
@@ -35,6 +30,11 @@ check_prereq()
 
 install_bb_master()
 {
+    # Force builbot user for the buildbot master installation
+    if [ "$(id -nu)" != "${bbuser}" ]; then
+	err 1 "This program must be run by ${bbuser}"
+    fi
+
     runcmd mkdir -p ${prefix}/bb_master
 
     info "Installing bb_master"
