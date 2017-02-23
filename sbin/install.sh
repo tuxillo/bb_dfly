@@ -213,7 +213,7 @@ bootstrap()
 		     ${vkernel_release_rsa_key}
 
     # Install bb_master
-    bin/bb_install.sh master
+    runcmd su -u bbdfly -l -c bin/bb_install.sh master
 }
 
 post_install()
