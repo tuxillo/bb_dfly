@@ -1,0 +1,43 @@
+#!/bin/sh
+#
+
+# PROVIDE: bbworker
+# REQUIRE: DAEMON netif
+# BEFORE:  LOGIN
+
+. /etc/rc.subr
+
+name="bbworker"
+rcvar=`set_rcvar`
+
+load_rc_config $name
+
+: ${bbworker_root:="/build/buildbot"}
+
+command="${bbworker_root}/bb_worker/sandbox/bin/buildbot-worker"
+command_args="start ${bbworker_root}/bb_worker/worker"
+start_precmd="bbworker_precmd"
+start_cmd="bbworker_start"
+stop_cmd="bbworker_stop"
+
+bbworker_precmd()
+{
+        # Load virtualenv environment
+        . ${bbworker_root}/bb_worker/sandbox/bin/activate
+
+}
+
+bbworker_start()
+{
+        ${command} start ${bbworker_root}/bb_worker/worker
+}
+
+bbworker_stop()
+{
+        ${command} stop ${bbworker_root}/bb_worker/worker
+}
+
+
+run_rc_command "$1"
+
+

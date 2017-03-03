@@ -96,6 +96,11 @@ proc              /proc   procfs  rw      0  0
 EOF
     fi
 
+    # Copy rc.d script for controlling the bbworker
+    if [ ! -f /etc/rc.d/bbworker ]; then
+	runcmd cp etc/rc.d/bbworker /mnt/etc/rc.d/
+    fi
+
     if [ ! -f /mnt/etc/rc.conf ]; then
 	cat <<EOF > /mnt/etc/rc.conf
 hostname="${imgdir}"
@@ -107,6 +112,8 @@ blanktime="NO"
 sshd_enable="YES"
 dntpd_enable="YES"
 fsck_y_enable="YES"
+bbworker_enable="YES"
+bbworker_root="${prefix}"
 EOF
     fi
 
