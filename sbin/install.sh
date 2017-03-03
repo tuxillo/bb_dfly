@@ -75,7 +75,7 @@ bootstrap_vkernel()
     else
 	# Get image from URL and extract it
 	info "Downloading/extracting ${imgdir} vkernel"
-	fetch -q -o - ${url} | \
+	fetch -B 4194304 -q -o - ${url} | \
 	    tar -C ${prefix} -xJf -
 	[ $? -ne 0 ] && err 1
     fi
@@ -106,6 +106,7 @@ sendmail_enable="NO"
 blanktime="NO"
 sshd_enable="YES"
 dntpd_enable="YES"
+fsck_y_enable="YES"
 EOF
     fi
 
@@ -141,7 +142,7 @@ vkernel_${imgdir}_bin="${prefix}/${imgdir}/vkernel"
 vkernel_${imgdir}_memsize="${vkernel_memsize}"
 vkernel_${imgdir}_rootimg_list="${prefix}/${imgdir}/root.img"
 vkernel_${imgdir}_iface_list="-I /var/run/vknet"
-vkernel_${imgdir}_logfile="/dev/null"
+vkernel_${imgdir}_logfile="/tmp/vkernel_${imgdir}.log"
 vkernel_${imgdir}_flags="-U"
 vkernel_${imgdir}_kill_timeout="45"
 EOF
@@ -190,7 +191,8 @@ EOF
     fi
 
     # copy local configuration
-    scp ${sshopts} -i ${key} etc/bb_dfly.conf root@${ip}:/root/bb_dfly/etc
+    scp ${sshopts} -i ${key} etc/bb_dfly.conf root@${ip}:/root/bb_dfly/etc \
+	>> ${logfile} 2>&1
     [ $? -ne 0 ] && err 1 "Could not copy local configuration."
 
     # Install bb_worker
