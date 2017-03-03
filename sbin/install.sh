@@ -97,13 +97,10 @@ EOF
     fi
 
     # Copy rc.d script for controlling the bbworker
-    if [ ! -f /etc/rc.d/bbworker ]; then
-	runcmd cp etc/rc.d/bbworker /mnt/etc/rc.d/
-    fi
+    runcmd cp etc/rc.d/bbworker /mnt/etc/rc.d/
 
     # Adjust rc.conf in the vkernel
-    if [ ! -f /mnt/etc/rc.conf ]; then
-	cat <<EOF > /mnt/etc/rc.conf
+    cat <<EOF > /mnt/etc/rc.conf
 hostname="${imgdir}"
 network_interfaces="lo0 vke0"
 ifconfig_vke0="inet ${ip} netmask 255.255.0.0"
@@ -116,20 +113,15 @@ fsck_y_enable="YES"
 bbworker_enable="YES"
 bbworker_root="${prefix}"
 EOF
-    fi
 
     # Make sure the vkernel can resolve domain names
-    if [ ! -f /mnt/etc/resolv.conf ]; then
-	cp /etc/resolv.conf /mnt/etc/resolv.conf
-    fi
+    runcmd cp /etc/resolv.conf /mnt/etc/resolv.conf
     
     # Security measures
     runcmd mkdir -m 0700 -p /mnt/root/.ssh
 
     # ${bbuser} SSH keys are permitted
-    if [ ! -f /mnt/root/.ssh/authorized_keys ]; then
-	cat ${key}.pub >> /mnt/root/.ssh/authorized_keys
-    fi
+    cat ${key}.pub > /mnt/root/.ssh/authorized_keys
 
     # This path is hardcoded in vkernel(7)
     runcmd mkdir -m 1777 -p /var/vkernel
