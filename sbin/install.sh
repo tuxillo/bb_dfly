@@ -101,6 +101,7 @@ EOF
 	runcmd cp etc/rc.d/bbworker /mnt/etc/rc.d/
     fi
 
+    # Adjust rc.conf in the vkernel
     if [ ! -f /mnt/etc/rc.conf ]; then
 	cat <<EOF > /mnt/etc/rc.conf
 hostname="${imgdir}"
@@ -117,22 +118,27 @@ bbworker_root="${prefix}"
 EOF
     fi
 
+    # Make sure the vkernel can resolve domain names
     if [ ! -f /mnt/etc/resolv.conf ]; then
 	cp /etc/resolv.conf /mnt/etc/resolv.conf
     fi
     
+    # Security measures
     runcmd mkdir -m 0700 -p /mnt/root/.ssh
 
-
+    # ${bbuser} SSH keys are permitted
     if [ ! -f /mnt/root/.ssh/authorized_keys ]; then
 	cat ${key}.pub >> /mnt/root/.ssh/authorized_keys
     fi
 
-    runcmd umount /mnt
-    runcmd vnconfig -u ${vn}
+    # This path is hardcoded in vkernel(7)
     runcmd mkdir -m 1777 -p /var/vkernel
 
-    info "Starting ${imgdir} vkernel (60 sec timeout)"
+    # Make sure nothing is used when starting up the vkernel
+    runcmd umount /mnt
+    runcmd vnconfig -u ${vn}
+
+    info "Starting ${imgdir} vkernel"
 
     list=$(grep vkernel_list /etc/rc.conf | tr -d \" |  cut -d= -f2 | sed -e "s/${imgdir}//")
     list=$(echo $list |  sed -e "s/^ //")
